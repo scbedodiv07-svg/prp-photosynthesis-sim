@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photosynthesis Light Intensity Lab</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --panel-bg: #ffffff;
+            --primary-blue: #2c3e50;
+            --accent-green: #27ae60;
+            --border-color: #dcdde1;
+            --text-main: #2f3640;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            height: 6vh;
+            background: var(--primary-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        h1 { font-size: 1.1rem; }
+
+        #main-layout {
+            display: flex;
+            flex: 1;
+            height: 94vh;
+            padding: 1vh;
+            gap: 1vh;
+        }
+
+        /* Left Column: Visuals and Data */
+        #left-col {
+            flex: 1.4;
+            display: flex;
+            flex-direction: column;
+            gap: 1vh;
+            min-width: 0;
+        }
+
+        #lab-viewport {
+            flex: 2;
+            background: #eef2f3;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #data-area {
+            flex: 1.2;
+            display: flex;
+            gap: 1vh;
+            height: 35vh;
+        }
+
+        /* Right Column: Controls */
+        #right-col {
+            flex: 0.6;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5vh;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5vh;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            background: #f8f9fa;
+            padding: 1.2vh;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+
+        label { display: block; margin-bottom: 0.5vh; font-weight: bold; font-size: 0.85rem; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        
+        .timer-display {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.8rem;
+            text-align: center;
+            background: #2f3640;
+            color: #00ff00;
+            padding: 1vh;
+            margin: 0.5vh 0;
+            border-radius: 4px;
+            border: 2px solid #1a1a1a;
+        }
+
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5vh; }
+        .btn {
+            padding: 1vh;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85rem;
+            transition: filter 0.2s;
+        }
+        .btn:active { filter: brightness(0.8); }
+        .btn-start { background: var(--accent-green); color: white; }
+        .btn-stop { background: #e74c3c; color: white; }
+        .btn-record { background: #3498db; color: white; width: 100%; margin-top: 1vh; }
+        .btn-reset { background: #95a5a6; color: white; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Table and Graph */
+        .card {
+            flex: 1;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-scroll { flex: 1; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        th, td { border: 1px solid #eee; padding: 0.6vh; text-align: center; }
+        th { background: #f1f2f6; position: sticky; top: 0; }
+
+        #graph-container { flex: 1; position: relative; width: 100%; height: 100%; }
+
+        /* SVG Assets */
+        #sim-svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .bubble { fill: rgba(255, 255, 255, 0.6); stroke: #fff; stroke-width: 0.2; }
+        .ruler-text { font-size: 14px; fill: #333; font-weight: bold; }
+        .ruler-line { stroke: #333; stroke-width: 2; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Photosynthesis & Light Intensity Virtual Investigation</h1>
+</header>
+
+<div id="main-layout">
+    <div id="left-col">
+        <div id="lab-viewport">
+            <svg id="sim-svg" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet">
+                <!-- Background Table -->
+                <rect x="0" y="420" width="1000" height="80" fill="#bdc3c7"></rect>
+                
+                <!-- Scaling Ruler System -->
+                <g id="ruler-group">
+                    <line x1="50" y1="450" x2="850" y2="450" class="ruler-line"></line>
+                    <!-- Ticks: 0 is at 850, 70 is at 150 -->
+                </g>
+
+                <!-- Setup (Hydrilla at X=850) -->
+                <g id="setup">
+                    <rect x="840" y="400" width="20" height="20" fill="#2c3e50"></rect>
+                    <rect x="845" y="250" width="10" height="150" fill="#95a5a6"></rect>
+                    <rect x="830" y="220" width="40" height="180" rx="20" fill="rgba(173, 216, 230, 0.2)" stroke="#34495e" stroke-width="2"></rect>
+                    <rect x="832" y="230" width="36" height="165" rx="18" fill="rgba(52, 152, 219, 0.3)"></rect>
+                    
+                    <g id="hydrilla">
+                        <path d="M 850 390 L 850 260" stroke="#1b5e20" stroke-width="4"></path>
+                        <path d="M 850 370 L 835 360 M 850 370 L 865 360" stroke="#2e7d32" stroke-width="2"></path>
+                        <path d="M 850 340 L 832 330 M 850 340 L 868 330" stroke="#2e7d32" stroke-width="2"></path>
+                        <path d="M 850 310 L 830 300 M 850 310 L 870 300" stroke="#2e7d32" stroke-width="2"></path>
+                    </g>
+                    <g id="bubble-container"></g>
+                </g>
+
+                <!-- Lamp Group -->
+                <g id="lamp-group">
+                    <polygon id="beam" points="80,300 250,220 250,380" fill="rgba(255, 235, 59, 0.2)"></polygon>
+                    <rect x="10" y="270" width="70" height="60" rx="5" fill="#34495e"></rect>
+                    <circle cx="80" cy="300" r="15" fill="#f1c40f"></circle>
+                    <rect x="30" y="330" width="10" height="90" fill="#7f8c8d"></rect>
+                    <rect x="10" y="415" width="50" height="5" fill="#2c3e50"></rect>
+                </g>
+            </svg>
+        </div>
+
+        <div id="data-area">
+            <div class="card">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Trial</th>
+                                <th>Dist (cm)</th>
+                                <th>Bubbles</th>
+                                <th>Rate (b/s)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trial-logs"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card">
+                <div id="graph-container">
+                    <canvas id="graph-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="right-col">
+        <div class="control-group">
+            <label>Distance Control</label>
+            <input type="range" id="dist-slider" min="0" max="70" value="30">
+            <div style="text-align: center; margin-top: 0.5vh; font-weight: bold; color: var(--primary-blue);">
+                <span id="dist-display">30</span> cm
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Stopwatch (30s Standard)</label>
+            <div class="timer-display" id="timer">00:00.00</div>
+            <div class="btn-grid">
+                <button class="btn btn-start" id="start-btn">START</button>
+                <button class="btn btn-stop" id="stop-btn">STOP</button>
+            </div>
+            <button class="btn btn-reset" style="width: 100%; margin-top: 0.5vh;" id="reset-btn">RESET TIMER</button>
+        </div>
+
+        <div class="control-group">
+            <label>Data Entry</label>
+            <input type="number" id="bubble-input" placeholder="Counted bubbles..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <button class="btn btn-record" id="record-btn">RECORD RESULT</button>
+        </div>
+
+        <div class="control-group" style="font-size: 0.8rem;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="variance-chk" checked=""> Biological Variance
+            </div>
+        </div>
+
+        <button class="btn btn-stop" style="margin-top: auto;" id="clear-btn">CLEAR ALL DATA</button>
+    </div>
+</div>
+
+
+</body>
+</html>
