@@ -170,37 +170,37 @@
         <div id="lab-viewport">
             <svg id="sim-svg" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet">
                 <!-- Background Table -->
-                <rect x="0" y="420" width="1000" height="80" fill="#bdc3c7"></rect>
+                <rect x="0" y="420" width="1000" height="80" fill="#bdc3c7" />
                 
                 <!-- Scaling Ruler System -->
                 <g id="ruler-group">
-                    <line x1="50" y1="450" x2="850" y2="450" class="ruler-line"></line>
+                    <line x1="50" y1="450" x2="850" y2="450" class="ruler-line" />
                     <!-- Ticks: 0 is at 850, 70 is at 150 -->
                 </g>
 
                 <!-- Setup (Hydrilla at X=850) -->
                 <g id="setup">
-                    <rect x="840" y="400" width="20" height="20" fill="#2c3e50"></rect>
-                    <rect x="845" y="250" width="10" height="150" fill="#95a5a6"></rect>
-                    <rect x="830" y="220" width="40" height="180" rx="20" fill="rgba(173, 216, 230, 0.2)" stroke="#34495e" stroke-width="2"></rect>
-                    <rect x="832" y="230" width="36" height="165" rx="18" fill="rgba(52, 152, 219, 0.3)"></rect>
+                    <rect x="840" y="400" width="20" height="20" fill="#2c3e50" />
+                    <rect x="845" y="250" width="10" height="150" fill="#95a5a6" />
+                    <rect x="830" y="220" width="40" height="180" rx="20" fill="rgba(173, 216, 230, 0.2)" stroke="#34495e" stroke-width="2" />
+                    <rect x="832" y="230" width="36" height="165" rx="18" fill="rgba(52, 152, 219, 0.3)" />
                     
                     <g id="hydrilla">
-                        <path d="M 850 390 L 850 260" stroke="#1b5e20" stroke-width="4"></path>
-                        <path d="M 850 370 L 835 360 M 850 370 L 865 360" stroke="#2e7d32" stroke-width="2"></path>
-                        <path d="M 850 340 L 832 330 M 850 340 L 868 330" stroke="#2e7d32" stroke-width="2"></path>
-                        <path d="M 850 310 L 830 300 M 850 310 L 870 300" stroke="#2e7d32" stroke-width="2"></path>
+                        <path d="M 850 390 L 850 260" stroke="#1b5e20" stroke-width="4" />
+                        <path d="M 850 370 L 835 360 M 850 370 L 865 360" stroke="#2e7d32" stroke-width="2" />
+                        <path d="M 850 340 L 832 330 M 850 340 L 868 330" stroke="#2e7d32" stroke-width="2" />
+                        <path d="M 850 310 L 830 300 M 850 310 L 870 300" stroke="#2e7d32" stroke-width="2" />
                     </g>
                     <g id="bubble-container"></g>
                 </g>
 
                 <!-- Lamp Group -->
                 <g id="lamp-group">
-                    <polygon id="beam" points="80,300 250,220 250,380" fill="rgba(255, 235, 59, 0.2)"></polygon>
-                    <rect x="10" y="270" width="70" height="60" rx="5" fill="#34495e"></rect>
-                    <circle cx="80" cy="300" r="15" fill="#f1c40f"></circle>
-                    <rect x="30" y="330" width="10" height="90" fill="#7f8c8d"></rect>
-                    <rect x="10" y="415" width="50" height="5" fill="#2c3e50"></rect>
+                    <polygon id="beam" points="80,300 250,220 250,380" fill="rgba(255, 235, 59, 0.2)" />
+                    <rect x="10" y="270" width="70" height="60" rx="5" fill="#34495e" />
+                    <circle cx="80" cy="300" r="15" fill="#f1c40f" />
+                    <rect x="30" y="330" width="10" height="90" fill="#7f8c8d" />
+                    <rect x="10" y="415" width="50" height="5" fill="#2c3e50" />
                 </g>
             </svg>
         </div>
@@ -256,7 +256,7 @@
 
         <div class="control-group" style="font-size: 0.8rem;">
             <div style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="variance-chk" checked=""> Biological Variance
+                <input type="checkbox" id="variance-chk" checked> Biological Variance
             </div>
         </div>
 
@@ -264,6 +264,288 @@
     </div>
 </div>
 
+<script>
+    const APP_ID = "photosynthesis_v5_final";
+    const HYDRILLA_X = 850;
+    const PIXELS_PER_CM = 10;
+    const TIME_LIMIT = 30000;
 
+    let trials = JSON.parse(localStorage.getItem(APP_ID)) || [];
+    let isRunning = false;
+    let startTime = 0;
+    let elapsed = 0;
+    let timerID = null;
+    let bubbleID = null;
+
+    const svg = document.getElementById('sim-svg');
+    const slider = document.getElementById('dist-slider');
+    const lamp = document.getElementById('lamp-group');
+    const beam = document.getElementById('beam');
+    const timerText = document.getElementById('timer');
+    const canvas = document.getElementById('graph-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function init() {
+        generateRuler();
+        updateVisuals();
+        refreshTable();
+        drawGraph();
+        
+        slider.oninput = updateVisuals;
+        document.getElementById('start-btn').onclick = startTimer;
+        document.getElementById('stop-btn').onclick = stopTimer;
+        document.getElementById('reset-btn').onclick = resetTimer;
+        document.getElementById('record-btn').onclick = recordData;
+        document.getElementById('clear-btn').onclick = clearData;
+
+        window.onresize = drawGraph;
+        startBubbles();
+    }
+
+    function generateRuler() {
+        const group = document.getElementById('ruler-group');
+        for (let i = 0; i <= 70; i += 10) {
+            const x = HYDRILLA_X - (i * PIXELS_PER_CM);
+            
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", x);
+            line.setAttribute("y1", 450);
+            line.setAttribute("x2", x);
+            line.setAttribute("y2", 465);
+            line.setAttribute("stroke", "#333");
+            line.setAttribute("stroke-width", "2");
+            group.appendChild(line);
+
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", x);
+            text.setAttribute("y", 485);
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("class", "ruler-text");
+            text.textContent = i;
+            group.appendChild(text);
+        }
+    }
+
+    function updateVisuals() {
+        const d = parseInt(slider.value);
+        document.getElementById('dist-display').textContent = d;
+        const xOffset = (HYDRILLA_X - 80) - (d * PIXELS_PER_CM);
+        lamp.setAttribute('transform', `translate(${xOffset}, 0)`);
+        const op = Math.max(0.05, 0.4 - (d / 100));
+        beam.setAttribute('fill', `rgba(255, 235, 59, ${op})`);
+        const spread = 80 + (d * 1.5);
+        beam.setAttribute('points', `80,300 ${spread+100},${300-spread} ${spread+100},${300+spread}`);
+    }
+
+    function startBubbles() {
+        if (bubbleID) clearInterval(bubbleID);
+        const d = parseInt(slider.value);
+        const frequency = 200 + (d * d * 1.8); 
+        bubbleID = setInterval(spawnBubble, frequency);
+    }
+
+    function spawnBubble() {
+        if (document.getElementById('variance-chk').checked && Math.random() > 0.8) return;
+        const b = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        const x = 845 + Math.random() * 10;
+        const y = 380 - Math.random() * 40;
+        b.setAttribute("cx", x);
+        b.setAttribute("cy", y);
+        b.setAttribute("r", 2 + Math.random() * 2);
+        b.setAttribute("class", "bubble");
+        document.getElementById('bubble-container').appendChild(b);
+
+        let curY = y;
+        let curX = x;
+        const speed = 0.5 + Math.random();
+        function drift() {
+            curY -= speed;
+            curX += Math.sin(curY/10) * 0.5;
+            b.setAttribute("cy", curY);
+            b.setAttribute("cx", curX);
+            if (curY > 230) requestAnimationFrame(drift);
+            else b.remove();
+        }
+        drift();
+    }
+
+    function startTimer() {
+        if (isRunning) return;
+        isRunning = true;
+        startTime = Date.now() - elapsed;
+        timerID = setInterval(updateTimer, 16);
+        document.getElementById('start-btn').disabled = true;
+    }
+
+    function stopTimer() {
+        isRunning = false;
+        clearInterval(timerID);
+        document.getElementById('start-btn').disabled = false;
+    }
+
+    function resetTimer() {
+        stopTimer();
+        elapsed = 0;
+        timerText.textContent = "00:00.00";
+        timerText.style.color = "#00ff00";
+    }
+
+    function updateTimer() {
+        elapsed = Date.now() - startTime;
+        const total = elapsed / 1000;
+        const m = Math.floor(total / 60);
+        const s = Math.floor(total % 60);
+        const ms = Math.floor((elapsed % 1000) / 10);
+        timerText.textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}.${ms.toString().padStart(2,'0')}`;
+        if (elapsed >= TIME_LIMIT) {
+            stopTimer();
+            timerText.style.color = "#ff4757";
+        }
+    }
+
+    function recordData() {
+        const count = parseInt(document.getElementById('bubble-input').value);
+        if (isNaN(count)) return;
+        const dist = parseInt(slider.value);
+        const rate = (count / (elapsed / 1000 || 30)).toFixed(2);
+        trials.push({ dist, count, rate: parseFloat(rate) });
+        localStorage.setItem(APP_ID, JSON.stringify(trials));
+        document.getElementById('bubble-input').value = "";
+        refreshTable();
+        drawGraph();
+    }
+
+    function refreshTable() {
+        const body = document.getElementById('trial-logs');
+        body.innerHTML = trials.map((t, i) => `
+            <tr>
+                <td>${i+1}</td>
+                <td>${t.dist}</td>
+                <td>${t.count}</td>
+                <td>${t.rate}</td>
+            </tr>
+        `).join('');
+    }
+
+    function clearData() {
+        trials = [];
+        localStorage.removeItem(APP_ID);
+        refreshTable();
+        drawGraph();
+    }
+
+    function drawGraph() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+
+        const w = rect.width;
+        const h = rect.height;
+        const padL = 50;
+        const padB = 45;
+        const padT = 30;
+        const padR = 25;
+
+        ctx.clearRect(0,0,w,h);
+        
+        // Setup scaling
+        const maxDist = 70;
+        const maxRate = Math.max(...trials.map(d => d.rate), 1.0) * 1.2;
+
+        // Draw Grid and Ticks
+        ctx.strokeStyle = "#e2e8f0";
+        ctx.lineWidth = 1;
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#64748b";
+        ctx.font = "10px sans-serif";
+
+        // Y Axis Ticks (Rate)
+        const ySegments = 5;
+        for(let i=0; i<=ySegments; i++){
+            const val = (maxRate * (i / ySegments)).toFixed(1);
+            const y = (h - padB) - (i / ySegments) * (h - padB - padT);
+            
+            // Grid line
+            ctx.beginPath();
+            ctx.moveTo(padL, y);
+            ctx.lineTo(w - padR, y);
+            ctx.stroke();
+            
+            // Label
+            ctx.fillText(val, padL - 8, y);
+        }
+
+        // X Axis Ticks (Distance)
+        ctx.textAlign = "center";
+        const xSegments = 7;
+        for(let i=0; i<=xSegments; i++){
+            const val = (maxDist * (i / xSegments));
+            const x = padL + (i / xSegments) * (w - padL - padR);
+            
+            // Grid line
+            ctx.beginPath();
+            ctx.moveTo(x, h - padB);
+            ctx.lineTo(x, padT);
+            ctx.stroke();
+            
+            // Label
+            ctx.fillText(val, x, h - padB + 15);
+        }
+
+        // Axes Lines
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(padL, padT);
+        ctx.lineTo(padL, h - padB);
+        ctx.lineTo(w - padR, h - padB);
+        ctx.stroke();
+
+        // Axis Labels
+        ctx.fillStyle = "#2c3e50";
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillText("Distance (cm)", (w + padL - padR)/2, h - 10);
+        
+        ctx.save();
+        ctx.translate(15, (h + padT - padB)/2);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText("Rate (bubbles/sec)", 0, 0);
+        ctx.restore();
+
+        if (trials.length < 1) return;
+
+        // Plot Data
+        const data = [...trials].sort((a,b) => a.dist - b.dist);
+        ctx.beginPath();
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-green').trim();
+        ctx.lineWidth = 2;
+
+        data.forEach((t, i) => {
+            const x = padL + (t.dist / maxDist) * (w - padL - padR);
+            const y = (h - padB) - (t.rate / maxRate) * (h - padB - padT);
+            
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Draw Points
+        data.forEach((t) => {
+            const x = padL + (t.dist / maxDist) * (w - padL - padR);
+            const y = (h - padB) - (t.rate / maxRate) * (h - padB - padT);
+            ctx.fillStyle = "#e67e22";
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle = "white";
+            ctx.stroke();
+        });
+    }
+
+    window.onload = init;
+</script>
 </body>
 </html>
